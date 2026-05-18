@@ -1,0 +1,24 @@
+# Node
+node_modules/
+dist/
+.env
+.env.local
+
+# Tauri
+src-tauri/target/
+
+# Logs
+*.log
+build.log
+build_utf8.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
+
+# Uploads / user data
+.uploads/

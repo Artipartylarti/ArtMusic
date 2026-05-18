@@ -1,0 +1,245 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap");
+
+:root {
+    /* ── Surfaces ─────────────────────────────── */
+    --bg: #090d16;
+    --surface-0: #0c1020;
+    --surface-1: #101628;
+    --surface-2: #161e35;
+    --surface-3: #1d2742;
+
+    /* ── Borders ──────────────────────────────── */
+    --border: rgba(147, 197, 253, 0.08);
+    --border-hover: rgba(147, 197, 253, 0.2);
+
+    /* ── Text ─────────────────────────────────── */
+    --text-primary: #e4eeff;
+    --text-secondary: #7ba8d8;
+    --text-muted: #415d82;
+
+    /* ── Accent — baby blue ───────────────────── */
+    --accent: #93c5fd;
+    --accent-deep: #60a5fa;
+    --accent-dim: rgba(147, 197, 253, 0.1);
+    --accent-border: rgba(147, 197, 253, 0.26);
+    --accent-glow: rgba(147, 197, 253, 0.22);
+
+    /* ── Danger ───────────────────────────────── */
+    --red: #f87171;
+    --red-dim: rgba(248, 113, 113, 0.1);
+    --red-border: rgba(248, 113, 113, 0.2);
+
+    /* ── Layout ───────────────────────────────── */
+    --sidebar-width: 220px;
+    --player-height: 90px;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family:
+        "Inter",
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* ── Scrollbars ─────────────────────────────── */
+::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--surface-3);
+    border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--surface-3);
+    border-radius: 99px;
+}
+
+/* ── Selection ──────────────────────────────── */
+::selection {
+    background: rgba(110, 231, 183, 0.18);
+}
+
+/* ── Keyframes ──────────────────────────────── */
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+@keyframes pulse-dot {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(0.6);
+        opacity: 0.4;
+    }
+}
+
+/* ── Utility classes ────────────────────────── */
+.appear {
+    animation: fadeUp 0.22s ease both;
+}
+.fade-in {
+    animation: fadeIn 0.18s ease both;
+}
+.slide-in {
+    animation: slideInRight 0.22s ease both;
+}
+
+/* ── Seek / progress bar ────────────────────────────────────────────────
+   Usage:
+     <div class="seek-bar" onClick={…}>
+       <div class="seek-bar__fill" style={{ width: `${pct}%` }} />
+       <div class="seek-bar__thumb" style={{ left: `${pct}%` }} />
+     </div>
+   ─────────────────────────────────────────────────────────────────────── */
+.seek-bar {
+    position: relative;
+    height: 3px;
+    border-radius: 99px;
+    background: var(--surface-3);
+    cursor: pointer;
+    flex: 1;
+    transition: height 0.15s ease;
+}
+.seek-bar:hover {
+    height: 5px;
+}
+
+.seek-bar__fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    border-radius: 99px;
+    background: var(--accent);
+    pointer-events: none;
+}
+
+.seek-bar__thumb {
+    position: absolute;
+    top: 50%;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow:
+        0 0 0 2px var(--surface-1),
+        0 2px 8px rgba(0, 0, 0, 0.5);
+    transform: translate(-50%, -50%) scale(0);
+    pointer-events: none;
+    transition: transform 0.12s ease;
+}
+.seek-bar:hover .seek-bar__thumb {
+    transform: translate(-50%, -50%) scale(1);
+}
+
+/* ── Volume slider ──────────────────────────── */
+.vol-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 3px;
+    background: var(--surface-3);
+    border-radius: 99px;
+    outline: none;
+    cursor: pointer;
+    flex: 1;
+    min-width: 0;
+}
+.vol-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    cursor: pointer;
+    transition:
+        transform 0.12s ease,
+        background 0.12s ease;
+}
+.vol-slider:hover::-webkit-slider-thumb {
+    background: var(--accent);
+    transform: scale(1.3);
+}
+
+/* ── Input focus ring ───────────────────────── */
+.input-field {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 14px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+    width: 100%;
+}
+.input-field:focus {
+    border-color: var(--accent-border);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.input-field::placeholder {
+    color: var(--text-muted);
+}
