@@ -36,9 +36,15 @@ jobs:
       - name: Debug info
         run: node --version && npm --version
         
+      # List node_modules
+      - name: List modules
+        run: ls node_modules | head -20
+      
       # Build frontend
       - name: Build frontend
-        run: npm run build
+        run: |
+          npm run build 2>&1
+          echo "Exit code: $?"
       
       # Build Tauri (without release - just build .exe)
       - name: Build Tauri app
