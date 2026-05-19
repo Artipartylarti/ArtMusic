@@ -19,44 +19,17 @@ jobs:
           node-version: '20'
           cache: 'npm'
       
-      # Rust setup
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
-      
       # Install dependencies
       - name: Install npm dependencies
         run: npm install
       
-      # Debug node version
-      - name: Debug info
-        run: node --version && npm --version
-        
-      # List node_modules
-      - name: List modules
-        run: ls node_modules | head -20
-      
       # Build frontend
       - name: Build frontend
-        run: |
-          npm run build 2>&1
-          echo "Exit code: $?"
+        run: npm run build
       
-      # Build Tauri (without release - just build .exe)
-      - name: Build Tauri app
-        run: |
-          cd src-tauri
-          cargo build --release 2>&1
-          ls -la target/release/*.exe 2>/dev/null || echo "No exe found"
-        
-      # Upload .exe as artifact
-      - name: Upload exe
+      # Upload dist
+      - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
-          name: artmusic-windows
-          path: src-tauri/target/release/*.exe
-          if-no-files-found: error
+          name: dist
+          path: dist
