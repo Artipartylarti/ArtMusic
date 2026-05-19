@@ -32,7 +32,11 @@ fn search_tracks(query: &str, db: tauri::State<'_, Mutex<Connection>>) -> Result
          LIMIT 20"
     ).map_err(|e| e.to_string())?;
 
-    let fts_query = format!("{}*", query.replace("\"", ""));
+    // FTS5 search with proper escaping - wrap query in quotes for exact phrase matching
+    // First sanitize: remove quotes and escape special FTS5 operators
+    let fts_query = query.replace("\"", "").replace("*", "").replace("-", " ").replace("+", " ");
+    // Add prefix wildcard for partial matching
+    fts_query = format!("{}*", fts_query);
 
     let track_iter = stmt.query_map([&fts_query], |row| {
         Ok(TrackSearchResult {
@@ -298,6 +302,122 @@ fn increment_play_count(track_id: &str, db: tauri::State<'_, Mutex<Connection>>)
     Ok(())
 }
 
+/// Import a single audio file and add it to the library
+#[tauri::command]
+async fn import_track_file(
+    file_path: String,
+    db: tauri::State<'_, Mutex<Connection>>,
+) -> Result<String, String> {
+    use lofty::file::TaggedFileExt;
+    use lofty::file::AudioFile;
+    use lofty::probe::Probe;
+    use lofty::tag::Accessor;
+    
+    let path = std::path::Path::new(&file_path);
+    let ext = path.extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    
+    // Validate it's an audio file
+    if !matches!(ext.as_str(), "mp3" | "flac" | "wav" | "m4a" | "ogg" | "aac") {
+        return Err("Unsupported audio format".to_string());
+    }
+    
+    // Parse metadata
+    let mut title = path.file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
+    let mut artist = "Unknown Artist".to_string();
+    let mut album = "Unknown Album".to_string();
+    let mut duration_ms: i64 = 0;
+    
+    if let Ok(tagged_file) = Probe::open(path).and_then(|p| p.read()) {
+        let tag = tagged_file.primary_tag().or_else(|| tagged_file.first_tag());
+        if let Some(tag) = tag {
+            if let Some(t) = tag.title() { title = t.into_owned(); }
+            if let Some(a) = tag.artist() { artist = a.into_owned(); }
+            if let Some(a) = tag.album() { album = a.into_owned(); }
+        }
+        duration_ms = tagged_file.properties().duration().as_millis() as i64;
+    }
+    
+    // Add to database
+    let conn = db.lock().map_err(|_| "DB lock failed".to_string())?;
+    let id = uuid::Uuid::new_v4().to_string();
+    
+    conn.execute(
+        "INSERT INTO tracks (id, server_id, title, artist, album, duration_ms, codec, is_lossless, source, file_path_or_id, cover_path)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        rusqlite::params![
+            id,
+            "local",
+            title,
+            artist,
+            album,
+            duration_ms,
+            ext,
+            ext == "flac" || ext == "wav",
+            "local",
+            file_path,
+            None::<String>
+        ]
+    ).map_err(|e| e.to_string())?;
+    
+    Ok(id)
+}
+
+// Auto-register artist accounts after scan
+#[tauri::command]
+fn register_artist_accounts(db: tauri::State<'_, Mutex<Connection>>) -> Result<usize, String> {
+    let conn = db.lock().map_err(|_| "DB lock failed".to_string())?;
+    
+    // Get unique artists from tracks
+    let mut stmt = conn.prepare(
+        "SELECT DISTINCT artist FROM tracks WHERE artist != 'Unknown Artist'"
+    ).map_err(|e| e.to_string())?;
+    
+    let artists: Vec<String> = stmt
+        .query_map([], |row| row.get(0))
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+    
+    let mut registered = 0;
+    
+    for artist in artists {
+        // Check if user already exists
+        let exists: bool = conn.query_row(
+            "SELECT COUNT(*) > 0 FROM users WHERE username = ?1",
+            [&artist],
+            |row| row.get(0),
+        ).unwrap_or(false);
+        
+        if !exists {
+            // Create artist account (no password = verified by default via artist status)
+            let id = uuid::Uuid::new_v4().to_string();
+            let slug = sanitize_tunnel_slug(&artist);
+            
+            conn.execute(
+                "INSERT INTO users (id, username, display_name, tunnel_slug, password_hash, is_artist, created_at)
+                 VALUES (?1, ?2, ?3, ?4, 'NO_PASSWORD', 1, ?5)",
+                rusqlite::params![
+                    id,
+                    artist.clone(),
+                    artist.clone(),
+                    slug,
+                    chrono::Utc::now().timestamp(),
+                ],
+            ).map_err(|e| e.to_string())?;
+            
+            registered += 1;
+        }
+    }
+    
+    Ok(registered)
+}
+
 #[tauri::command]
 fn get_top_tracks(limit: i64, db: tauri::State<'_, Mutex<Connection>>) -> Result<Vec<TrackInfo>, String> {
     let conn = db.lock().map_err(|_| "DB lock failed".to_string())?;
@@ -425,6 +545,7 @@ fn delete_release(release_id: &str, db: tauri::State<'_, Mutex<Connection>>) -> 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             // Hole den AppData Pfad des OS via Tauri
@@ -447,6 +568,7 @@ pub fn run() {
             get_platform,
             // play count
             increment_play_count,
+            import_track_file,
             get_top_tracks,
             // artists
             upsert_artist,
@@ -463,6 +585,17 @@ pub fn run() {
             auth::logout_user,
             auth::get_auth_session,
             auth::get_tunnel_slug,
+            register_artist_accounts,
+            // Friends
+            auth::add_friend,
+            auth::get_friends,
+            auth::remove_friend,
+            // Jams
+            auth::create_jam,
+            auth::get_jams,
+            auth::join_jam,
+            auth::leave_jam,
+            auth::sync_jam,
             // server
             server::get_local_ip,
             server::get_hosting_status,

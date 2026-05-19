@@ -139,11 +139,32 @@ pub fn initialize_database(app_data_dir: PathBuf) -> Result<Connection> {
         [],
     )?;
 
-    // Silent migrations
-    let _ = conn.execute("ALTER TABLE tracks ADD COLUMN cover_path TEXT", []);
-    let _ = conn.execute("ALTER TABLE tracks ADD COLUMN artist_id TEXT", []);
-    let _ = conn.execute("ALTER TABLE users ADD COLUMN public_url TEXT", []);
-    let _ = conn.execute("ALTER TABLE tracks ADD COLUMN play_count INTEGER NOT NULL DEFAULT 0", []);
+    // Safe SQLite migrations - use a helper that ignores errors for idempotency
+    fn safe_migration(conn: &Connection, name: &str, sql: &str) {
+        // Check if already applied
+        let exists: bool = conn.query_row(
+            "SELECT COUNT(*) > 0 FROM schema_migrations WHERE migration_name = ?1",
+            [name],
+            |row| row.get(0),
+        ).unwrap_or(false);
+        
+        if exists { return; }
+        
+        // Try to run migration
+        if conn.execute(sql, []).is_ok() {
+            let _ = conn.execute(
+                "INSERT INTO schema_migrations (migration_name, applied_at) VALUES (?1, strftime('%s', 'now'))",
+                [name],
+            );
+        }
+    }
+    
+    // Run migrations
+    safe_migration(&conn, "add_cover_path", "ALTER TABLE tracks ADD COLUMN cover_path TEXT");
+    safe_migration(&conn, "add_artist_id", "ALTER TABLE tracks ADD COLUMN artist_id TEXT");
+    safe_migration(&conn, "add_public_url", "ALTER TABLE users ADD COLUMN public_url TEXT");
+    safe_migration(&conn, "add_is_artist", "ALTER TABLE users ADD COLUMN is_artist INTEGER DEFAULT 0");
+    safe_migration(&conn, "add_play_count", "ALTER TABLE tracks ADD COLUMN play_count INTEGER NOT NULL DEFAULT 0");
     let _ = conn.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_tracks_file_path ON tracks(file_path_or_id)",
         [],

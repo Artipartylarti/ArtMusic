@@ -67,9 +67,21 @@ fn mime_for_path(path: &str) -> &'static str {
         Some("flac") => "audio/flac",
         Some("wav") => "audio/wav",
         Some("m4a") => "audio/mp4",
+        Some("aac") => "audio/aac",
+        Some("ogg") => "audio/ogg",
+        Some("opus") => "audio/opus",
         Some("png") => "image/png",
         Some("webp") => "image/webp",
-        _ => "image/jpeg",
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("gif") => "image/gif",
+        Some("svg") => "image/svg+xml",
+        Some("css") => "text/css",
+        Some("js") => "application/javascript",
+        Some("json") => "application/json",
+        Some("html") => "text/html",
+        Some("txt") => "text/plain",
+        // Default to octet-stream for unknown types (safer than incorrectly claiming JPEG)
+        _ => "application/octet-stream",
     }
 }
 
@@ -222,6 +234,14 @@ fn handle_client_request(request: tiny_http::Request, db_path: std::path::PathBu
                 let _ = request.respond(r.with_status_code(500));
             }
         }
+    } else if url == "/api/health" {
+        let mut response = Response::from_string(r#"{"status":"ok"}"#);
+        response.add_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
+        // Cache health for 5 seconds
+        response.add_header(Header::from_bytes(&b"Cache-Control"[..], &b"max-age=5, public"[..]).unwrap());
+        response.add_header(cors_header);
+        let _ = request.respond(response);
+    
     } else if url == "/api/tracks" {
         match Connection::open(&db_path) {
             Ok(conn) => {
@@ -257,6 +277,8 @@ fn handle_client_request(request: tiny_http::Request, db_path: std::path::PathBu
                     let json = serde_json::to_string(&tracks).unwrap();
                     let mut response = Response::from_string(json);
                     response.add_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
+                    // Cache tracks for 30 seconds - they don't change often
+                    response.add_header(Header::from_bytes(&b"Cache-Control"[..], &b"max-age=30, public"[..]).unwrap());
                     response.add_header(cors_header);
                     let _ = request.respond(response);
                 } else {
@@ -344,6 +366,8 @@ fn handle_client_request(request: tiny_http::Request, db_path: std::path::PathBu
                     let json = serde_json::to_string(&releases).unwrap();
                     let mut response = Response::from_string(json);
                     response.add_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
+                    // Cache releases for 30 seconds
+                    response.add_header(Header::from_bytes(&b"Cache-Control"[..], &b"max-age=30, public"[..]).unwrap());
                     response.add_header(cors_header);
                     let _ = request.respond(response);
                 } else {

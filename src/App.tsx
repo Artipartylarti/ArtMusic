@@ -9,12 +9,14 @@ import { HomePage } from "./components/HomePage";
 import { SearchView } from "./components/SearchView";
 import { PlaylistsView } from "./components/PlaylistsView";
 import { ArtistDetail } from "./components/ArtistDetail";
+import { ArtistsView } from "./components/ArtistsView";
 import { MusicVideoManager } from "./components/MusicVideoManager";
 import { useJamStore } from "./store/useJamStore";
 import { useAppStore } from "./store/useAppStore";
 import type { Release } from "./store/useAppStore";
 import { useAuthStore } from "./store/useAuthStore";
 import { usePlaylistStore } from "./store/usePlaylistStore";
+import { useServerStore } from "./store/useServerStore";
 import { Disc, Pencil, Trash2, X } from "lucide-react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
@@ -23,7 +25,7 @@ function App() {
 
   useEffect(() => {
     checkSession();
-  }, []);
+  }, [checkSession]);
 
   if (isLoading) {
     return (
@@ -59,14 +61,23 @@ function MainApp() {
   const { isPanelOpen, togglePanel } = useJamStore();
   const { loadTracksFromDb } = useAppStore();
   const { loadPlaylists } = usePlaylistStore();
+  const { loadServersFromStorage, autoConnectToOnline } = useServerStore();
 
   const [activeView, setActiveView] = useState("home");
   const [selectedArtist, setSelectedArtist] = useState<string | null>(null);
 
   useEffect(() => {
+    // Load local data first
     loadTracksFromDb();
     loadPlaylists();
-  }, []);
+    
+    // Then check for online servers
+    loadServersFromStorage();
+    // Auto-connect happens after a short delay to allow UI to render
+    setTimeout(() => {
+      autoConnectToOnline();
+    }, 1000);
+  }, [loadTracksFromDb, loadPlaylists, loadServersFromStorage, autoConnectToOnline]);
 
   function navigateToArtist(artist: string) {
     setSelectedArtist(artist);
@@ -141,6 +152,7 @@ function MainApp() {
                 <SearchView onBack={goBack} onSelectArtist={navigateToArtist} />
               )}
               {activeView === "playlists" && <PlaylistsView onBack={goBack} />}
+              {activeView === "artists" && <ArtistsView />}
               {activeView === "artist" && selectedArtist && (
                 <ArtistDetail artistName={selectedArtist} onBack={goBack} />
               )}

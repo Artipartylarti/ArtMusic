@@ -95,6 +95,7 @@ interface AppState {
   refreshHostingStatus: () => Promise<void>;
   startTunnel: () => Promise<void>;
   stopTunnel: () => Promise<void>;
+  importTrackFile: (filePath: string) => Promise<string | null>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -243,6 +244,16 @@ export const useAppStore = create<AppState>((set, get) => ({
       }));
 
       set({ customTracks: mapped, customReleases: mappedReleases });
+      
+      // Auto-register artist accounts
+      try {
+        const registered = await invoke<number>("register_artist_accounts");
+        if (registered > 0) {
+          console.log(`Registered ${registered} artist accounts`);
+        }
+      } catch (e) {
+        console.log("Artist registration skipped (no artists found yet)");
+      }
     } catch (err) {
       console.error("Failed to load library from SQLite:", err);
     }
@@ -361,4 +372,65 @@ export const useAppStore = create<AppState>((set, get) => ({
       console.error("Failed to refresh hosting status:", err);
     }
   },
+
+  // Import a single track file via file dialog
+  importTrackFile: async (filePath: string) => {
+    try {
+      const id = await invoke<string>("import_track_file", { filePath });
+      await get().loadTracksFromDb();
+      return id;
+    } catch (err) {
+      console.error("Failed to import track:", err);
+      alert(`Error importing track: ${err}`);
+      return null;
+    }
+  },
 }));
+
+// ============ SELECTORS (memoized, use outside components or with useAppStore.getState()) ============
+
+export const appSelectors = {
+  // Get track by ID - fast lookup
+  getTrackById: (tracks: Track[], id: string): Track | undefined => {
+    return tracks.find(t => t.id === id);
+  },
+  
+  // Get tracks by artist
+  getTracksByArtist: (tracks: Track[], artist: string): Track[] => {
+    return tracks.filter(t => t.artist === artist);
+  },
+  
+  // Get tracks by album
+  getTracksByAlbum: (tracks: Track[], album: string): Track[] => {
+    return tracks.filter(t => t.album === album);
+  },
+  
+  // Search tracks - optimized
+  searchTracks: (tracks: Track[], query: string): Track[] => {
+    const q = query.toLowerCase();
+    return tracks.filter(t => 
+      t.title.toLowerCase().includes(q) ||
+      t.artist.toLowerCase().includes(q) ||
+      t.album.toLowerCase().includes(q)
+    );
+  },
+  
+  // Get top tracks - sorted by play count
+  getTopTracks: (tracks: Track[], limit = 10): Track[] => {
+    return [...tracks]
+      .sort((a, b) => (b.play_count || 0) - (a.play_count || 0))
+      .slice(0, limit);
+  },
+
+  // Get unique artists
+  getUniqueArtists: (tracks: Track[]): string[] => {
+    const artists = new Set(tracks.map(t => t.artist));
+    return Array.from(artists).sort();
+  },
+
+  // Get unique albums
+  getUniqueAlbums: (tracks: Track[]): string[] => {
+    const albums = new Set(tracks.map(t => t.album));
+    return Array.from(albums).sort();
+  },
+};
