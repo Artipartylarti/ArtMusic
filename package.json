@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "electron": "electron .",
+    "electron:build": "npm run build && electron-builder --win",
     "tauri": "tauri"
   },
   "dependencies": {
@@ -25,9 +27,28 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
     "autoprefixer": "^10.5.0",
+    "electron": "^42.1.0",
+    "electron-builder": "^26.8.1",
     "postcss": "^8.5.14",
     "tailwindcss": "^4.3.0",
     "typescript": "~5.8.3",
     "vite": "^7.0.4"
+  },
+  "build": {
+    "appId": "com.artmusic.app",
+    "productName": "ArtMusic",
+    "directories": {
+      "output": "electron-release"
+    },
+    "files": [
+      "dist/**/*",
+      "index.js"
+    ],
+    "extraMetadata": {
+      "main": "index.js"
+    },
+    "win": {
+      "target": "portable"
+    }
   }
 }
