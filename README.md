@@ -21,6 +21,26 @@ Enthält: Architektur, SQLite-Schema, HTTP-API, WebRTC-Jam-Protokoll (JSON-Paylo
 | Jam-Sync (WebRTC) | ⚠️ Modul vorhanden, nicht E2E |
 | Signal-Server | ❌ geplant |
 
+## Alternative: Qt (kein WebView2)
+
+Falls Microsoft WebView2 nicht verfügbar ist, gibt es eine Alternative mit Qt:
+
+```bash,python
+# Python Abhängigkeiten installieren
+pip install PyQt6 PyQt6-WebEngine
+
+# Oder mit requirements
+pip install -r requirements-qt.txt
+
+# Qt Client starten
+python artmusic_qt.py
+```
+
+**Qt Version verwendet:**
+- PyQt6 6.11.0 mit WebEngine (Chromium-basiert)
+- Kein WebView2 nötig
+- Läuft auf Windows, Mac, Linux
+
 ## Entwicklung
 
 ```bash,bash
