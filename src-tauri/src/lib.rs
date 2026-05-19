@@ -4,6 +4,7 @@ mod scanner;
 mod server;
 
 use auth::sanitize_tunnel_slug;
+use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::Manager;
 use serde::Serialize;
@@ -543,6 +544,60 @@ fn delete_release(release_id: &str, db: tauri::State<'_, Mutex<Connection>>) -> 
     Ok(())
 }
 
+// Check if WebView2 is installed
+#[tauri::command]
+fn check_webview2() -> Result<bool, String> {
+    // Check if WebView2 runtime is installed
+    let webview2_path = std::env::var("LOCALAPPDATA")
+        .map(|p| PathBuf::from(p).join("Microsoft\\Edge\\WebView2\\Application"))
+        .ok();
+
+    if let Some(path) = webview2_path {
+        if path.exists() {
+            return Ok(true);
+        }
+    }
+
+    // Also check in Program Files
+    let program_paths = [
+        PathBuf::from("C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application"),
+        PathBuf::from("C:\\Program Files\\Microsoft\\EdgeWebView\\Application"),
+    ];
+
+    for path in &program_paths {
+        if path.exists() {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
+}
+
+// Try to install WebView2 by launching Edge bootstrapper
+#[tauri::command]
+fn install_webview2() -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    {
+        // Try to download and run WebView2 bootstrapper
+        let bootstrapper_url = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
+        
+        // For now, return instructions
+        Ok(format!(
+            "Bitte installiere Microsoft Edge WebView2:\n\
+            1. Lade es herunter von:\n\
+            {}\n\
+            2. Führe die Datei aus\n\
+            3. Starte diese App erneut",
+            bootstrapper_url
+        ))
+    }
+    
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok("WebView2 ist nur für Windows verfügbar".to_string())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -558,6 +613,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            check_webview2,
+            install_webview2,
             search_tracks,
             get_default_music_dir,
             scan_directory,
