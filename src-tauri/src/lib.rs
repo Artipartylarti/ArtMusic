@@ -3,6 +3,7 @@ mod db;
 mod scanner;
 mod server;
 
+use auth::sanitize_tunnel_slug;
 use std::sync::Mutex;
 use tauri::Manager;
 use serde::Serialize;
@@ -34,7 +35,7 @@ fn search_tracks(query: &str, db: tauri::State<'_, Mutex<Connection>>) -> Result
 
     // FTS5 search with proper escaping - wrap query in quotes for exact phrase matching
     // First sanitize: remove quotes and escape special FTS5 operators
-    let fts_query = query.replace("\"", "").replace("*", "").replace("-", " ").replace("+", " ");
+    let mut fts_query = query.replace("\"", "").replace("*", "").replace("-", " ").replace("+", " ");
     // Add prefix wildcard for partial matching
     fts_query = format!("{}*", fts_query);
 
@@ -545,7 +546,6 @@ fn delete_release(release_id: &str, db: tauri::State<'_, Mutex<Connection>>) -> 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             // Hole den AppData Pfad des OS via Tauri
@@ -586,16 +586,6 @@ pub fn run() {
             auth::get_auth_session,
             auth::get_tunnel_slug,
             register_artist_accounts,
-            // Friends
-            auth::add_friend,
-            auth::get_friends,
-            auth::remove_friend,
-            // Jams
-            auth::create_jam,
-            auth::get_jams,
-            auth::join_jam,
-            auth::leave_jam,
-            auth::sync_jam,
             // server
             server::get_local_ip,
             server::get_hosting_status,

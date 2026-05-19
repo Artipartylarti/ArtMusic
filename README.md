@@ -23,14 +23,14 @@ Enthält: Architektur, SQLite-Schema, HTTP-API, WebRTC-Jam-Protokoll (JSON-Paylo
 
 ## Entwicklung
 
-```bash
+```bash,bash
 npm install
 npm run tauri dev
 ```
 
 Build:
 
-```bash
+```bash,bash
 npm run tauri build
 ```
 

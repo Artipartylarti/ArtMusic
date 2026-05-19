@@ -17,7 +17,7 @@ pub struct AuthUser {
     pub public_url: String,
 }
 
-fn sanitize_tunnel_slug(input: &str) -> String {
+pub fn sanitize_tunnel_slug(input: &str) -> String {
     let mut s: String = input
         .chars()
         .filter(|c| c.is_ascii_alphanumeric() || *c == '-')
