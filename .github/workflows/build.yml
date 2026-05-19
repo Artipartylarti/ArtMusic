@@ -32,6 +32,10 @@ jobs:
       - name: Install npm dependencies
         run: npm install
       
+      # Debug node version
+      - name: Debug info
+        run: node --version && npm --version
+        
       # Build frontend
       - name: Build frontend
         run: npm run build
