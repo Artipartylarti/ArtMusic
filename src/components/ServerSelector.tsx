@@ -1,18 +1,51 @@
 import { useEffect, useState } from 'react';
 import { useServerStore } from '../store/useServerStore';
-import { ChevronDown, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, Plus, Trash2, Wifi } from 'lucide-react';
 
 export function ServerSelector() {
-  const { servers, activeServer, setActiveServer, addServer, removeServer, loadServersFromStorage } =
-    useServerStore();
+  const { 
+    servers, 
+    activeServer, 
+    setActiveServer, 
+    addServer, 
+    removeServer, 
+    loadServersFromStorage,
+    fetchRemoteTracks,
+    fetchRemoteReleases,
+  } = useServerStore();
   const [isOpen, setIsOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [newServerName, setNewServerName] = useState('');
   const [newServerUrl, setNewServerUrl] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadServersFromStorage();
   }, []);
+
+  async function handleSelectServer(server: typeof activeServer) {
+    if (!server) return;
+    
+    setActiveServer(server);
+    setIsOpen(false);
+    
+    // If it's a remote server (has URL), fetch its data
+    if (server.url && server.url !== 'local') {
+      setLoading(true);
+      try {
+        const remoteTracks = await fetchRemoteTracks();
+        await fetchRemoteReleases();
+        
+        if (remoteTracks.length > 0) {
+          console.log(`Loaded ${remoteTracks.length} tracks from ${server.name}`);
+        }
+      } catch (e) {
+        console.error('Failed to load from server:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+  }
 
   function handleAddServer(e: React.FormEvent) {
     e.preventDefault();
@@ -83,10 +116,8 @@ export function ServerSelector() {
               servers.map((server) => (
                 <button
                   key={server.id}
-                  onClick={() => {
-                    setActiveServer(server);
-                    setIsOpen(false);
-                  }}
+                  onClick={() => handleSelectServer(server)}
+                  disabled={loading}
                   style={{
                     width: '100%',
                     textAlign: 'left',
@@ -95,18 +126,22 @@ export function ServerSelector() {
                     color: activeServer?.id === server.id ? 'var(--surface-0)' : 'var(--text-primary)',
                     border: 'none',
                     borderRadius: 6,
-                    cursor: 'pointer',
+                    cursor: loading ? 'not-allowed' : 'pointer',
                     fontSize: 12,
                     marginBottom: 4,
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     transition: 'all 0.15s',
+                    opacity: loading ? 0.5 : 1,
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontWeight: 500, marginBottom: 2 }}>{server.name}</p>
-                    <p style={{ fontSize: 10, opacity: 0.7, wordBreak: 'break-all' }}>{server.url}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <p style={{ fontWeight: 500, marginBottom: 2 }}>{server.name}</p>
+                      {server.url && server.url !== 'local' && <Wifi size={10} style={{ opacity: 0.6 }} />}
+                    </div>
+                    <p style={{ fontSize: 10, opacity: 0.7, wordBreak: 'break-all' }}>{server.url || 'Lokaler Server'}</p>
                   </div>
                   <button
                     onClick={(e) => {
@@ -126,7 +161,7 @@ export function ServerSelector() {
                     <Trash2 size={12} />
                   </button>
                 </button>
-              ))
+                ))
             )}
           </div>
 

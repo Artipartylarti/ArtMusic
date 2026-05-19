@@ -8,8 +8,10 @@ import {
   List,
   Film,
   User,
+  Plus,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../store/useAppStore";
 import { useState } from "react";
 
@@ -60,6 +62,36 @@ export function Sidebar({
       console.error("Scan failed:", e);
     } finally {
       setScanning(false);
+    }
+  }
+
+  async function handleImportFiles() {
+    try {
+      // Open file dialog to select audio files
+      const selected = await open({
+        multiple: true,
+        filters: [{
+          name: "Audio",
+          extensions: ["mp3", "flac", "wav", "m4a", "ogg", "aac"],
+        }],
+      });
+      
+      if (!selected) return;
+      
+      // Import each selected file
+      const files = Array.isArray(selected) ? selected : [selected];
+      const { importTrackFile } = useAppStore.getState();
+      
+      let importedCount = 0;
+      for (const file of files) {
+        const id = await importTrackFile(file);
+        if (id) importedCount++;
+      }
+      
+      setScanCount(importedCount);
+      await loadTracksFromDb();
+    } catch (e) {
+      console.error("Import failed:", e);
     }
   }
 
@@ -281,6 +313,7 @@ export function Sidebar({
             border: `1px solid ${scanning ? "var(--border)" : "var(--accent-border)"}`,
             cursor: scanning ? "not-allowed" : "pointer",
             transition: "all 0.2s",
+            marginBottom: 8,
           }}
           onMouseEnter={(e) => {
             if (!scanning)
@@ -296,6 +329,37 @@ export function Sidebar({
           <FolderOpen size={13} strokeWidth={1.5} />
           {scanning ? "Wird gescannt…" : "Musik-Ordner scannen"}
         </button>
+        
+        {/* Import files button */}
+        <button
+          onClick={handleImportFiles}
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 7,
+            padding: "10px 12px",
+            borderRadius: 10,
+            fontSize: 12,
+            fontWeight: 500,
+            color: "var(--surface-0)",
+            background: "var(--accent)",
+            border: "none",
+            cursor: "pointer",
+            transition: "all 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.background = "var(--accent-hover)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = "var(--accent)";
+          }}
+        >
+          <Plus size={13} strokeWidth={2} />
+          Dateien importieren
+        </button>
+        
         {scanCount !== null && (
           <p
             style={{

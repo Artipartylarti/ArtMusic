@@ -26,11 +26,11 @@ export function SearchView({ onBack, onSelectArtist }: SearchViewProps) {
     // Unique Artists
     const artists = [...new Set(tracks.map((t) => t.artist))];
 
-    // Unique Albums
+    // Unique Albums (filter out undefined/empty)
     const albums = [
       ...new Set(
         tracks
-          .filter((t) => t.album !== "Unknown")
+          .filter((t) => t.album && t.album !== "Unknown")
           .map((t) => `${t.album} - ${t.artist}`),
       ),
     ];
