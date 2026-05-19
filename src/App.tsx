@@ -17,10 +17,12 @@ import type { Release } from "./store/useAppStore";
 import { useAuthStore } from "./store/useAuthStore";
 import { usePlaylistStore } from "./store/usePlaylistStore";
 import { useServerStore } from "./store/useServerStore";
+import { WebView2Checker } from "./components/WebView2Checker";
 import { Disc, Pencil, Trash2, X } from "lucide-react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
 function App() {
+  const [webView2Ready, setWebView2Ready] = useState(false);
   const { user, isLoading, checkSession } = useAuthStore();
 
   useEffect(() => {
@@ -50,11 +52,12 @@ function App() {
     );
   }
 
-  if (!user) {
-    return <AuthScreen />;
-  }
-
-  return <MainApp />;
+  // Wrap everything with WebView2 checker - only show children when ready
+  return (
+    <WebView2Checker onReady={() => setWebView2Ready(true)}>
+      {webView2Ready ? (!user ? <AuthScreen /> : <MainApp />) : null}
+    </WebView2Checker>
+  );
 }
 
 function MainApp() {
