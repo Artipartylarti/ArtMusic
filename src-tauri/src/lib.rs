@@ -573,23 +573,53 @@ fn check_webview2() -> Result<bool, String> {
     Ok(false)
 }
 
-// Try to install WebView2 by launching Edge bootstrapper
+// Try to install WebView2 using PowerShell (available on Windows)
 #[tauri::command]
 fn install_webview2() -> Result<String, String> {
     #[cfg(target_os = "windows")]
     {
-        // Try to download and run WebView2 bootstrapper
-        let bootstrapper_url = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
+        use std::process::Command;
         
-        // For now, return instructions
-        Ok(format!(
-            "Bitte installiere Microsoft Edge WebView2:\n\
-            1. Lade es herunter von:\n\
-            {}\n\
-            2. Führe die Datei aus\n\
-            3. Starte diese App erneut",
-            bootstrapper_url
-        ))
+        let bootstrapper_url = "https://msedge.sf.dl.delivery.mp.microsoft.com/filestreamingservice/files/0bbb66e3-8f09-497b-a082-aedbdee906e2/MicrosoftEdgeWebview2Setup.exe";
+        
+        // Download to temp folder using PowerShell
+        let temp_dir = std::env::temp_dir();
+        let installer_path = temp_dir.join("WebView2Setup.exe");
+        
+        println!("Downloading WebView2 installer...");
+        
+        // Use PowerShell to download (available on all Windows)
+        let ps_script = format!(
+            "Invoke-WebRequest -Uri '{}' -OutFile '{}'",
+            bootstrapper_url,
+            installer_path.to_string_lossy()
+        );
+        
+        let output = Command::new("powershell")
+            .args(["-Command", &ps_script])
+            .output();
+            
+        match output {
+            Ok(_) if installer_path.exists() => {
+                // Run the installer silently
+                println!("Running WebView2 installer...");
+                let _ = Command::new(&installer_path)
+                    .args(["/silent", "/install"])
+                    .spawn();
+                    
+                Ok("WebView2 wird installiert! Bitte diese App nach Abschluss neu starten.".to_string())
+            }
+            err => {
+                println!("Download failed: {:?}", err);
+                Ok(format!(
+                    "Automatische Installation fehlgeschlagen.\n\
+                    Bitte manuell herunterladen:\n\
+                    {}\n\
+                    Nach der Installation App neu starten.",
+                    bootstrapper_url
+                ))
+            }
+        }
     }
     
     #[cfg(not(target_os = "windows"))]
