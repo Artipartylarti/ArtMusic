@@ -1,5 +1,7 @@
 import { LogOut } from "lucide-react";
 import { GlobalSearch } from "./GlobalSearch";
+import { ServerSelector } from "./ServerSelector";
+import { HostingPanel } from "./HostingPanel";
 import { useAuthStore } from "../store/useAuthStore";
 
 export function TopBar() {
@@ -20,19 +22,10 @@ export function TopBar() {
         gap: 16,
       }}
     >
-      {/* Left: mode label */}
-      <div style={{ width: "25%", display: "flex", alignItems: "center" }}>
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 600,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            color: "var(--text-muted)",
-          }}
-        >
-          Studio
-        </span>
+      {/* Left: Server selector + Hosting */}
+      <div style={{ width: "25%", display: "flex", alignItems: "center", gap: 8 }}>
+        <ServerSelector />
+        <HostingPanel />
       </div>
 
       {/* Center: global search */}

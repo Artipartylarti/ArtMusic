@@ -53,29 +53,33 @@ export class SyncEngine {
     if (!this.dataChannel) return;
 
     this.dataChannel.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      
-      if (msg.type === 'ping' && this.isHost) {
-        // Host antwortet auf Ping
-        this.dataChannel?.send(JSON.stringify({
-          type: 'pong',
-          t0: msg.t0,
-          t1: Date.now(),
-          t2: Date.now()
-        }));
-      } else if (msg.type === 'pong' && !this.isHost) {
-        // Client berechnet RTT und Zeit-Offset
-        const t3 = Date.now();
-        const { t0, t1, t2 } = msg;
+      try {
+        const msg = JSON.parse(event.data);
         
-        // NTP Formel
-        this.rtt = (t3 - t0) - (t2 - t1);
-        this.clockOffset = ((t1 - t0) + (t2 - t3)) / 2;
-        
-        console.log(`[Sync] RTT: ${this.rtt}ms | Offset: ${this.clockOffset}ms`);
-      } else if (msg.type === 'playback-sync') {
-        // Host sendet Playback-Status (z.B. Play bei 15400ms)
-        this.handlePlaybackSync(msg);
+        if (msg.type === 'ping' && this.isHost) {
+          // Host antwortet auf Ping
+          this.dataChannel?.send(JSON.stringify({
+            type: 'pong',
+            t0: msg.t0,
+            t1: Date.now(),
+            t2: Date.now()
+          }));
+        } else if (msg.type === 'pong' && !this.isHost) {
+          // Client berechnet RTT und Zeit-Offset
+          const t3 = Date.now();
+          const { t0, t1, t2 } = msg;
+          
+          // NTP Formel
+          this.rtt = (t3 - t0) - (t2 - t1);
+          this.clockOffset = ((t1 - t0) + (t2 - t3)) / 2;
+          
+          console.log(`[Sync] RTT: ${this.rtt}ms | Offset: ${this.clockOffset}ms`);
+        } else if (msg.type === 'playback-sync') {
+          // Host sendet Playback-Status (z.B. Play bei 15400ms)
+          this.handlePlaybackSync(msg);
+        }
+      } catch (err) {
+        console.error('[Sync] Failed to parse message:', err);
       }
     };
   }
