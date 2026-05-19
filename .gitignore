@@ -22,3 +22,9 @@ Thumbs.db
 
 # Uploads / user data
 .uploads/
+
+# Build outputs (*.exe, *.dll)
+*.exe
+*.dll
+*.so
+*.dylib
